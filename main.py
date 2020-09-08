@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import matplotlib
 matplotlib.use("TkAgg")
@@ -11,16 +12,29 @@ from dial import Dial, DiscreteDial
 
 import tkinter as tk
 
+parser = argparse.ArgumentParser(description='Run EP421 electro-optic experiment')
+parser.add_argument('--offline', action='store_true')
+offline = parser.parse_args().offline
+
 style.use("ggplot")
 
 FONT = ("Arial", 8)
 
 distance_1 = 100
 distance_2 = 30
-dial_height = 45
 
 jones_polaroid_vertical = np.array([[[1., 0.], [0., 0.]]])
-jones_polaroid_vertical = np.array([[[0., 0.], [0., 1.]]])
+jones_polaroid_horizontal = np.array([[[0., 0.], [0., 1.]]])
+
+
+offline = True
+if offline:
+    border = 4
+    dial_height = 43
+else:
+    border = 6
+    dial_height = 45
+
 
 def jones_polaroid(angle):
     rad = np.deg2rad(angle)
@@ -56,8 +70,8 @@ class ImageCanvas:
         img = Image.open(image_path)
         blank = Image.open('imgs/blank.jpg')
         if width is not None and height is not None:
-            img = img.resize((width-6, height-6), Image.ANTIALIAS)
-            blank = blank.resize((width-6, height-6), Image.ANTIALIAS)
+            img = img.resize((width-border, height-border), Image.ANTIALIAS)
+            blank = blank.resize((width-border, height-border), Image.ANTIALIAS)
         else:
             width = img.width + 10
             height = img.height + 10
@@ -120,7 +134,7 @@ class ToggleButton:
 
         if image_path is not None:
             img = Image.open(image_path)
-            img = img.resize((dial_height - 6, dial_height - 6), Image.ANTIALIAS)
+            img = img.resize((dial_height - border, dial_height - border), Image.ANTIALIAS)
             self.img = ImageTk.PhotoImage(img)
             self.image_canvas = tk.Canvas(self.frame, width=dial_height, height=dial_height, bg='black')
             self.image_canvas.create_image(4, 4, anchor=tk.NW, image=self.img)
@@ -188,7 +202,6 @@ class StateButton:
             self.insert_entry(self.labels[self.state])
 
         self.button.pack(side=tk.LEFT)
-        # self.left_frame.pack(side=tk.LEFT)
         if self.labels is not None: self.entry.pack(side=tk.LEFT)
 
         self.user_command = command if command is not None else lambda state: None
@@ -217,7 +230,7 @@ class LabelledDial:
         self.right_frame = tk.Frame(self.frame, height=dial_height, width=dial_height)
 
         img = Image.open(image_path)
-        img = img.resize((dial_height - 6, dial_height - 6), Image.ANTIALIAS)
+        img = img.resize((dial_height - border, dial_height - border), Image.ANTIALIAS)
         self.img = ImageTk.PhotoImage(img)
         self.canvas = tk.Canvas(self.frame, width=dial_height, height=dial_height, bg='black')
         self.canvas.create_image(4, 4, anchor=tk.NW, image=self.img)
@@ -446,7 +459,7 @@ def reset_command():
     ch2_interval_dial.dial.reset()
     ch2_center_dial.dial.reset()
     t_interval_dial.dial.reset()
-    
+
 reset = tk.Button(dial_frame, text='RESET', width=5, height=1, command=reset_command)
 reset.pack()
 
