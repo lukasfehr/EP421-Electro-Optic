@@ -30,9 +30,11 @@ jones_polaroid_horizontal = np.array([[[0., 0.], [0., 1.]]])
 if offline:
     border = 4
     dial_height = 43
+    light_params = [7, 7, 31, 31]
 else:
     border = 6
     dial_height = 45
+    light_params = [7, 7, 33, 33]
 
 
 def jones_polaroid(angle):
@@ -149,7 +151,7 @@ class ToggleButton:
         self.button = tk.Button(self.center_frame, text=text, font=FONT, command=self.toggle)
         if light:
             self.light_canvas = tk.Canvas(self.frame, height=dial_height, width=dial_height)
-            self.light = self.light_canvas.create_oval(dial_height * 0.25 - 2, dial_height * 0.25 - 2, dial_height * 0.75 - 1, dial_height * 0.75 - 1, fill='grey')
+            self.light = self.light_canvas.create_oval(*light_params, fill='grey')
         else:
             self.light_canvas = None
             self.light = None
