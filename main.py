@@ -33,8 +33,8 @@ if offline:
     light_params = [7, 7, 31, 31]
 else:
     border = 6
-    dial_height = 45
-    light_params = [7, 7, 33, 33]
+    dial_height = 41
+    light_params = [7, 7, 31, 31]
 
 
 def jones_polaroid(angle):
@@ -47,7 +47,7 @@ def jones_polaroid(angle):
     M[1, 1] = sin * sin
     return M
 
-def jones_qwp(angle):
+def jones_qwp_exact(angle):
     rad = np.deg2rad(angle)
     cos = np.cos(rad)
     sin = np.sin(rad)
@@ -55,7 +55,19 @@ def jones_qwp(angle):
     M[0, 0] = cos * cos + 1j * sin * sin
     M[0, 1] = M[1, 0] = (1 - 1j) * sin * cos
     M[1, 1] = sin * sin + 1j * cos * cos
-    M *= np.exp(-0.25j * np.pi)
+    M *= np.exp(-0.25j * np.pi)        
+    return M
+
+def jones_arbitrary(angle, phase):
+    rad = np.deg2rad(angle)
+    cos = np.cos(rad)
+    sin = np.sin(rad)
+    plus = np.exp(0.5j * phase)
+    minus = np.exp(-0.5j * phase)
+    M = np.zeros((2, 2), dtype=np.complex)
+    M[0, 0] = cos * cos * minus + sin * sin * plus
+    M[0, 1] = M[1, 0] = (minus - plus) * cos * sin
+    M[1, 1] = sin * sin * minus + cos * cos * plus
     return M
 
 def jones_crystal(phase):
@@ -65,6 +77,13 @@ def jones_crystal(phase):
     M[:, 0, 0] = M[:, 1, 1] = np.cos(0.5 * phase)
     M[:, 0, 1] = M[:, 1, 0] = -1j * np.sin(0.5 * phase)
     return M
+
+def jones_qwp(angle, wavelength):
+    if wavelength == 650.0:
+        return jones_qwp_exact(angle)
+    else:
+        phase = 0.5 * np.pi * 650.0 / wavelength
+        return jones_arbitrary(angle, phase)
 
 class ImageCanvas:
     def __init__(self, master, image_path, column, row, columnspan=1, rowspan=1, width=distance_1, height=distance_1, bg='black', **kwargs):
@@ -129,7 +148,7 @@ class CanvasArrow:
 
 
 class ToggleButton:
-    def __init__(self, master, text, column=None, row=None, image_path=None, columnspan=1, rowspan=1, light=True, command=None, height=dial_height, width=60):
+    def __init__(self, master, text, column=None, row=None, image_path=None, columnspan=1, rowspan=1, light=True, command=None, height=dial_height, width=60, text_on=None, text_off=None):
         self.frame = tk.Frame(master)
 
         self.command = command
@@ -149,6 +168,7 @@ class ToggleButton:
         self.text = text
         self.on = False
         self.button = tk.Button(self.center_frame, text=text, font=FONT, command=self.toggle)
+
         if light:
             self.light_canvas = tk.Canvas(self.frame, height=dial_height, width=dial_height)
             self.light = self.light_canvas.create_oval(*light_params, fill='grey')
@@ -156,11 +176,21 @@ class ToggleButton:
             self.light_canvas = None
             self.light = None
 
+        if text_on is not None and text_off is not None:
+            self.text_canvas = tk.Canvas(self.frame, height=dial_height, width=dial_height)
+            self.canvas_text = self.text_canvas.create_text(dial_height/2, dial_height/2, text=text_off, font=FONT, fill='black', justify='center')
+            self.text_on = text_on
+            self.text_off = text_off
+        else:
+            self.text_canvas = None
+            self.canvas_text = None
+
         self.button.grid(row=1, column=1)
 
         if image_path is not None: self.image_canvas.pack(side=tk.LEFT)
         self.center_frame.pack(side=tk.LEFT)
-        if light: self.light_canvas.pack(side=tk.LEFT)
+        if self.light_canvas is not None: self.light_canvas.pack(side=tk.LEFT)
+        if self.text_canvas is not None: self.text_canvas.pack(side=tk.LEFT)
 
         self.center_frame.grid_columnconfigure(0, weight=1)
         self.center_frame.grid_rowconfigure(0, weight=1)
@@ -174,10 +204,12 @@ class ToggleButton:
     def toggle(self):
         if self.on:
             self.on = False
-            self.light_canvas.itemconfig(self.light, fill='grey')
+            if self.light_canvas is not None: self.light_canvas.itemconfig(self.light, fill='grey')
+            if self.text_canvas is not None: self.text_canvas.itemconfig(self.canvas_text, text=self.text_off)
         else:
             self.on = True
-            self.light_canvas.itemconfig(self.light, fill='green')
+            if self.light_canvas is not None: self.light_canvas.itemconfig(self.light, fill='green')
+            if self.text_canvas is not None: self.text_canvas.itemconfig(self.canvas_text, text=self.text_on)
         if self.command is not None:
             self.command(self.on)
 
@@ -225,7 +257,7 @@ class StateButton:
 
 
 class LabelledDial:
-    def __init__(self, master, image_path, label, width, column, row, values, continuous=True, columnspan=1, rowspan=1, interval=None, unit='', maxRot=5, precision=0, secondary=None):
+    def __init__(self, master, image_path, label, width, column, row, values, continuous=True, columnspan=1, rowspan=1, interval=None, unit='', maxRot=5, precision=0, secondary=None, initial=None):
         self.frame = tk.Frame(master)
         self.frame.pack(side=tk.TOP, anchor=tk.NW)
 
@@ -257,14 +289,14 @@ class LabelledDial:
             self.m = (self.values[1] - self.values[0]) / (720.0 * maxRot)
             self.b = 0.5 * (self.values[0] + self.values[1])
             self.dial = Dial(self.right_frame, radius=f'{dial_height * 0.004:.2f}i', maxRot=maxRot, command=self.command_continuous, zeroAxis='y', rotDir='clockwise')
-            self.init = self.b
-            self.state = self.b
+            self.init = self.b if initial is None else initial
+            self.state = self.init
         else:
             assert(len(values) > 0)
             angles = [-180. + 360. * i / (len(values) + 1) for i in range(1, len(values) + 1)]
             self.dial = DiscreteDial(self.right_frame, angles=angles, initAngleIndex=len(values)//2, radius=f'{dial_height * 0.004:.2f}i', command=self.command_discrete, zeroAxis='y', rotDir='clockwise')
-            self.init = self.values[len(values)//2]
-            self.state = self.values[len(values)//2]
+            self.init = self.values[len(values)//2] if initial is None or initial not in values else initial
+            self.state = self.init
         # self.dial.widget.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
         self.insert_entry()
 
@@ -294,6 +326,10 @@ class LabelledDial:
         else:
             self.secondary_value = self.secondary_function(self.state)
 
+        if continuous:
+            self.set(self.state)
+
+
     def command_continuous(self, deg):
         self.state = self.m * deg + self.b
         self.insert_entry()
@@ -304,6 +340,14 @@ class LabelledDial:
         assert(index < len(self.values))
         self.state = self.values[index]
         self.insert_entry()
+
+    def set(self, init):
+        if self.continuous:
+            deg = (init - self.b) / self.m
+            self.dial.set_angle(deg, absolute=True)
+        else:
+            raise NotImplementedError
+
 
     def insert_entry(self):
         self.entry.configure(state='normal')
@@ -378,9 +422,17 @@ osc = Oscilloscope(window, column=2, row=9, columnspan=6)
 dial_frame = tk.Frame(window)
 dial_frame.grid(column=8, row=1, rowspan=9)
 
+laser_button = ToggleButton(dial_frame, image_path='imgs/laser.jpg', text='Laser', light=False, text_off='650.0\nnm', text_on='632.8\nnm')
 qwp_button = ToggleButton(dial_frame, image_path='imgs/qwp.jpg', text='QWP', command=lambda state: qwp.swap())
-qwp_angle = LabelledDial(dial_frame, image_path='imgs/qwp.jpg', label='Angle', width=5, column=0, row=0, values=[0, 90], continuous=True, unit=u'\u00b0', maxRot=1, precision=1, secondary=jones_qwp)
-signal_amplitude = LabelledDial(dial_frame, image_path='imgs/signal-generator.jpg', label='Amplitude', width=5, column=0, row=0, values=[0, 50], continuous=True, unit='V', maxRot=1, precision=1)
+
+def qwp_secondary(angle):
+    if laser_button.on:
+        return jones_qwp(angle, 632.8)
+    else:
+        return jones_qwp(angle, 650.0)
+
+qwp_angle = LabelledDial(dial_frame, image_path='imgs/qwp.jpg', label='Angle', width=5, column=0, row=0, values=[0, 90], continuous=True, unit=u'\u00b0', maxRot=1, precision=1, secondary=qwp_secondary, initial=0.0)
+signal_amplitude = LabelledDial(dial_frame, image_path='imgs/signal-generator.jpg', label='Amplitude', width=5, column=0, row=0, values=[0, 20], continuous=True, unit='V', maxRot=1, precision=1)
 signal_frequency = LabelledDial(dial_frame, image_path='imgs/signal-generator.jpg', label='Frequency', width=5, column=0, row=1, values=[0.01, 50], continuous=True, unit='kHz', maxRot=1, precision=1)
 amplifier_offset = LabelledDial(dial_frame, image_path='imgs/amplifier.jpg', label='DC Offset', width=5, column=0, row=2, values=[-200, 200], continuous=True, unit='V', maxRot=2, precision=1)
 ch1_toggle = ToggleButton(dial_frame, image_path='imgs/osc.jpg', text='CH1')
@@ -433,16 +485,16 @@ def animate(i):
         vout_max = 460 / 1000 # voltage corresponding to 1 transmittance in volts
         vout_center = 0.5 * (vout_min + vout_max)
         vout_amplitude = (vout_max - vout_min) / 2
-        halfwave = 223.6 # half wave voltage in volts
-        offset = 170.3 # + max(0, qwp_button.state - 1) * halfwave / 2
+        halfwave = 206.2 if laser_button.on else 223.6 # half wave voltage in volts
+        offset = 2.4
 
-        phase = np.pi * (vin_true + offset) / halfwave
+        phase = np.pi * (vin_true) / halfwave + offset
         j_crystal = jones_crystal(phase)
         j_qwp = qwp_angle.secondary_value if qwp_button.on else np.eye(2, dtype=np.complex)
         j_total = j_qwp @ j_crystal
         transmittance = np.abs(j_total[:, 1, 0])**2
         vout_true = transmittance * vout_amplitude + vout_center
-        vout_true += np.random.normal(0, 0.001, n)
+        vout_true += np.random.normal(0, 0.0002, n)
 
         vout_display = vout_true * m2 + b2
 

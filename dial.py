@@ -155,7 +155,7 @@ class Dial:
 
     # ---------------------------------------------------------------------------
     #
-    def set_angle(self, a, doCallback=1):
+    def set_angle(self, a, doCallback=1, absolute=False):
 
         #
         # Move dial pointer
@@ -179,6 +179,15 @@ class Dial:
         ox = d * math.cos(rad)
         oy = d * math.sin(rad)
         self.canvas.coords(self.line_id, cx, cy, cx + ox, cy - oy)
+
+        if absolute:
+            self.rotations = 0
+            while a > 180.0:
+                a -= 360.0
+                self.rotations += 1
+            while a <= -180.0:
+                a += 360.0
+                self.rotations -= 1
 
         #
         # Call callback
