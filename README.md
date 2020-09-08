@@ -2,7 +2,7 @@
 Electro-optic effect experiment simulation for EP 421.
 
 There are two ways to run this code:
-1. Go to the [repl.it project](https://repl.it/@LukasFehr/EP421-Electro-Optic#main.py?outputonly=1) and use it online (easiest option).
+1. Go to the [repl.it project](https://repl.it/@LukasFehr/EP421-Electro-Optic?outputonly=1) and click run (easiest option).
 2. Clone or download this repository and run the code offline (requires python).
 
 ## Install Python via Anaconda
