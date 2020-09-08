@@ -27,7 +27,6 @@ jones_polaroid_vertical = np.array([[[1., 0.], [0., 0.]]])
 jones_polaroid_horizontal = np.array([[[0., 0.], [0., 1.]]])
 
 
-offline = True
 if offline:
     border = 4
     dial_height = 43
