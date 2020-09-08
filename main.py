@@ -103,7 +103,7 @@ class VerticalLabel:
         self.canvas.create_text(1, height//2, text=label, anchor=tk.N, angle=90, font=FONT)
 
 class CanvasArrow:
-    def __init__(self, master, column, row, columnspan=1, rowspan=1, width=distance_1, height=distance_1, direction='right'):
+    def __init__(self, master, column, row, columnspan=1, rowspan=1, width=distance_1, height=distance_1, direction='right', x=0.0, y=0.0, angle=0.0, text=None):
         self.canvas = tk.Canvas(master, width=width, height=height)
         self.canvas.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
 
@@ -121,6 +121,9 @@ class CanvasArrow:
             x2, y2 = width - 1, height // 2
 
         self.canvas.create_line(x1, y1, x2, y2, fill='black', arrow='last', width=5)
+
+        if text is not None:
+            self.canvas.create_text(x, y, fill='black', text=text, font=FONT, angle=angle)
 
 
 class ToggleButton:
@@ -146,7 +149,7 @@ class ToggleButton:
         self.button = tk.Button(self.center_frame, text=text, font=FONT, command=self.toggle)
         if light:
             self.light_canvas = tk.Canvas(self.frame, height=dial_height, width=dial_height)
-            self.light = self.light_canvas.create_oval(dial_height * 0.25 - 1, dial_height * 0.25 - 1, dial_height * 0.75 - 1, dial_height * 0.75 - 1, fill='grey')
+            self.light = self.light_canvas.create_oval(dial_height * 0.25 - 2, dial_height * 0.25 - 2, dial_height * 0.75 - 1, dial_height * 0.75 - 1, fill='grey')
         else:
             self.light_canvas = None
             self.light = None
@@ -310,7 +313,7 @@ class LabelledDial:
         self.entry.configure(state='readonly')
 
 
-class Oscilliscope:
+class Oscilloscope:
     def __init__(self, master, column, row, columnspan=1, rowspan=1):
         dpi = 100
         width = 600 / dpi
@@ -352,22 +355,22 @@ equipment_row = 5
 optical_bench_settings_row = optical_bench_row + 1
 signal_to_hva = CanvasArrow(window, column=3, row=equipment_row, width=distance_1, height=distance_1, direction='right')
 hva_to_mod = CanvasArrow(window, column=4, row=optical_bench_settings_row, width=distance_1, height=distance_2, direction='up')
-hva_to_osc = CanvasArrow(window, column=5, row=equipment_row, width=2*distance_1, height=distance_1, direction='right', columnspan=2)
-det_to_osc = CanvasArrow(window, column=7, row=optical_bench_settings_row, width=distance_1, height=distance_2, direction='down')
+hva_to_osc = CanvasArrow(window, column=5, row=equipment_row, width=2*distance_1, height=distance_1, direction='right', columnspan=2, x=distance_1, y=distance_1/2 - 10, text='CH1')
+det_to_osc = CanvasArrow(window, column=7, row=optical_bench_settings_row, width=distance_1, height=distance_2, direction='down', x=distance_1/2 - 15, y=distance_2/2, text='CH2', angle=90)
 
 # equipment
 signal = ImageCanvas(window, image_path='imgs/signal-generator.jpg', column=2, row=equipment_row)
 amplifier = ImageCanvas(window, image_path='imgs/amplifier.jpg', column=4, row=equipment_row)
-oscilliscope = ImageCanvas(window, image_path='imgs/osc.jpg', column=7, row=equipment_row)
+oscilloscope = ImageCanvas(window, image_path='imgs/osc.jpg', column=7, row=equipment_row)
 
 # equipment labels
 label_row_2 = 6
 laser_label = CenteredLabel(window, 'Signal Generator', column=2, row=label_row_2)
 polarizer_label = CenteredLabel(window, 'Amplifier With\nDC Bias', column=4, row=label_row_2)
-modulator_label = CenteredLabel(window, 'Oscilliscope', column=7, row=label_row_2)
+modulator_label = CenteredLabel(window, 'Oscilloscope', column=7, row=label_row_2)
 
 # window.grid_rowconfigure(8, minsize=10)
-osc = Oscilliscope(window, column=2, row=9, columnspan=6)
+osc = Oscilloscope(window, column=2, row=9, columnspan=6)
 
 # equipment settings
 dial_frame = tk.Frame(window)
@@ -437,6 +440,7 @@ def animate(i):
         j_total = j_qwp @ j_crystal
         transmittance = np.abs(j_total[:, 1, 0])**2
         vout_true = transmittance * vout_amplitude + vout_center
+        vout_true += np.random.normal(0, 0.001, n)
 
         vout_display = vout_true * m2 + b2
 
@@ -465,5 +469,5 @@ reset.pack()
 # start the main application loop
 window.geometry('800x600') # pixels
 window.resizable(0, 0)
-ani = mani.FuncAnimation(osc.f, animate, interval=500)
+ani = mani.FuncAnimation(osc.f, animate, interval=200)
 window.mainloop()
