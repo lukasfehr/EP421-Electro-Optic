@@ -29,8 +29,8 @@ jones_polaroid_horizontal = np.array([[[0., 0.], [0., 1.]]])
 
 if offline:
     border = 4
-    dial_height = 43
-    light_params = [7, 7, 31, 31]
+    dial_height = 39
+    light_params = [6, 6, 28, 28]
 else:
     border = 6
     dial_height = 41
@@ -55,7 +55,7 @@ def jones_qwp_exact(angle):
     M[0, 0] = cos * cos + 1j * sin * sin
     M[0, 1] = M[1, 0] = (1 - 1j) * sin * cos
     M[1, 1] = sin * sin + 1j * cos * cos
-    M *= np.exp(-0.25j * np.pi)        
+    M *= np.exp(-0.25j * np.pi)
     return M
 
 def jones_arbitrary(angle, phase):
@@ -481,8 +481,8 @@ def animate(i):
         m2 = 250.0 / ch2_int
         b2 = -ch2_ctr / (4 * ch2_int)
 
-        vout_min = -210 / 1000 # voltage corresponding to 0 transmittance in volts
-        vout_max = 460 / 1000 # voltage corresponding to 1 transmittance in volts
+        vout_min = -910 / 1000 # voltage corresponding to 0 transmittance in volts
+        vout_max = 1460 / 1000 # voltage corresponding to 1 transmittance in volts
         vout_center = 0.5 * (vout_min + vout_max)
         vout_amplitude = (vout_max - vout_min) / 2
         halfwave = 206.2 if laser_button.on else 223.6 # half wave voltage in volts
@@ -494,7 +494,7 @@ def animate(i):
         j_total = j_qwp @ j_crystal
         transmittance = np.abs(j_total[:, 1, 0])**2
         vout_true = transmittance * vout_amplitude + vout_center
-        vout_true += np.random.normal(0, 0.0002, n)
+        vout_true += np.random.normal(0, 0.001, n)
 
         vout_display = vout_true * m2 + b2
 
